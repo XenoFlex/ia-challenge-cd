@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ':*)",
+      "Bash(pip install:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(gh auth:*)",
+      "Bash(winget list:*)",
+      "Bash(scoop --version)",
+      "Bash(choco --version)",
+      "Bash(git --version)",
+      "Bash(powershell -Command \"winget install --id GitHub.cli --source winget --accept-source-agreements --accept-package-agreements 2>&1\")",
+      "Bash(powershell -Command \"gh auth login --web 2>&1\")",
+      "Bash(powershell -Command \"Get-Command gh -ErrorAction SilentlyContinue; [System.Environment]::GetEnvironmentVariable\\('PATH','Machine'\\) -split ';' | Select-String -Pattern 'gh|GitHub'\")",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" auth status)"
+    ]
+  }
+}
