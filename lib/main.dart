@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'pages/homepage.dart';
 
-void main() {
-  runApp(const QuizzApp());
-}
+void main() => runApp(const QuizzApp());
 
 class QuizzApp extends StatelessWidget {
   const QuizzApp({super.key});

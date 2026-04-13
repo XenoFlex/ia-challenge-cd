@@ -6,7 +6,6 @@ import 'result_page.dart';
 
 class FlashPage extends StatefulWidget {
   final List<FlashQuestion> questions;
-
   const FlashPage({super.key, required this.questions});
 
   @override
@@ -15,107 +14,77 @@ class FlashPage extends StatefulWidget {
 
 class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
   static const int _totalSeconds = 60;
-
   int _remaining = _totalSeconds;
-  int _currentIndex = 0;
-  int _score = 0;
-  int _answered = 0;
+  int _idx = 0, _score = 0, _answered = 0;
   bool? _lastCorrect;
-  bool _gameEnded = false;
+  bool _ended = false;
   Timer? _timer;
-  late List<FlashQuestion> _shuffledQuestions;
+  late List<FlashQuestion> _questions;
 
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
-  late AnimationController _feedbackController;
+  late AnimationController _pulseCtrl;
+  late Animation<double> _pulseAnim;
+  late AnimationController _feedbackCtrl;
   late Animation<double> _feedbackFade;
-  late AnimationController _questionController;
+  late AnimationController _questionCtrl;
   late Animation<Offset> _questionSlide;
 
   @override
   void initState() {
     super.initState();
-    _shuffledQuestions = List.from(widget.questions)..shuffle();
+    _questions = List.from(widget.questions)..shuffle();
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.12).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+    _pulseCtrl =
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 500))
+          ..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.12)
+        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
-    _feedbackController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-    );
-    _feedbackFade = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _feedbackController, curve: Curves.easeOut),
-    );
+    _feedbackCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 250));
+    _feedbackFade = Tween<double>(begin: 0, end: 1)
+        .animate(CurvedAnimation(parent: _feedbackCtrl, curve: Curves.easeOut));
 
-    _questionController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
+    _questionCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 200));
     _questionSlide = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(
-        CurvedAnimation(parent: _questionController, curve: Curves.easeOut));
+            begin: const Offset(0, 0.1), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _questionCtrl, curve: Curves.easeOut));
+    _questionCtrl.forward();
 
-    _questionController.forward();
     _startTimer();
   }
 
   void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_remaining <= 0) {
-        timer.cancel();
-        _endGame();
-      } else {
-        setState(() => _remaining--);
-      }
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      if (_remaining <= 0) { t.cancel(); _endGame(); }
+      else { setState(() => _remaining--); }
     });
   }
 
   void _answer(bool answer) {
-    if (_currentIndex >= _shuffledQuestions.length || _gameEnded) return;
-    final question = _shuffledQuestions[_currentIndex];
-    final isCorrect = answer == question.isTrue;
-
+    if (_idx >= _questions.length || _ended) return;
+    final ok = answer == _questions[_idx].isTrue;
     setState(() {
       _answered++;
-      if (isCorrect) _score++;
-      _lastCorrect = isCorrect;
+      if (ok) _score++;
+      _lastCorrect = ok;
     });
-
-    _feedbackController.forward(from: 0);
-
+    _feedbackCtrl.forward(from: 0);
     Future.delayed(const Duration(milliseconds: 550), () {
       if (!mounted) return;
-      setState(() {
-        _currentIndex++;
-        _lastCorrect = null;
-      });
-      _questionController.reset();
-      _questionController.forward();
-
-      if (_currentIndex >= _shuffledQuestions.length) {
-        _endGame();
-      }
+      setState(() { _idx++; _lastCorrect = null; });
+      _questionCtrl.reset();
+      _questionCtrl.forward();
+      if (_idx >= _questions.length) _endGame();
     });
   }
 
   void _endGame() {
-    if (_gameEnded) return;
-    _gameEnded = true;
+    if (_ended) return;
+    _ended = true;
     _timer?.cancel();
     if (!mounted) return;
-
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -126,6 +95,7 @@ class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
             total: _answered,
             mode: 'flash',
             timeUsed: _totalSeconds - _remaining,
+            gameBuilder: () => FlashPage(questions: widget.questions),
           ),
         ),
       );
@@ -135,9 +105,9 @@ class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _timer?.cancel();
-    _pulseController.dispose();
-    _feedbackController.dispose();
-    _questionController.dispose();
+    _pulseCtrl.dispose();
+    _feedbackCtrl.dispose();
+    _questionCtrl.dispose();
     super.dispose();
   }
 
@@ -152,38 +122,37 @@ class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: const Color(0xFF0D2137),
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            Expanded(
-              child: _currentIndex < _shuffledQuestions.length
-                  ? _buildQuestion()
-                  : _buildEndState(),
-            ),
-          ],
-        ),
+        child: Column(children: [
+          _buildTopBar(),
+          Expanded(
+            child: _idx < _questions.length
+                ? _buildQuestion()
+                : const Center(
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                      Text('⏳', style: TextStyle(fontSize: 48)),
+                      SizedBox(height: 12),
+                      Text('Calcul des résultats…',
+                          style: TextStyle(color: Colors.white70, fontSize: 18)),
+                    ])),
+          ),
+        ]),
       ),
     );
   }
 
-  Widget _buildTopBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Row(
-        children: [
+  Widget _buildTopBar() => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Row(children: [
           GestureDetector(
-            onTap: () {
-              _timer?.cancel();
-              Navigator.pop(context);
-            },
+            onTap: () { _timer?.cancel(); Navigator.pop(context); },
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.arrow_back,
-                  color: Colors.white, size: 20),
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10)),
+              child:
+                  const Icon(Icons.arrow_back, color: Colors.white, size: 20),
             ),
           ),
           const SizedBox(width: 12),
@@ -192,9 +161,8 @@ class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: _remaining / _totalSeconds,
-                backgroundColor: Colors.white.withOpacity(0.1),
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(_timerColor),
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                valueColor: AlwaysStoppedAnimation<Color>(_timerColor),
                 minHeight: 8,
               ),
             ),
@@ -202,212 +170,141 @@ class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
           const SizedBox(width: 12),
           ScaleTransition(
             scale: _remaining <= 10
-                ? _pulseAnimation
+                ? _pulseAnim
                 : const AlwaysStoppedAnimation(1.0),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _timerColor.withOpacity(0.2),
+                color: _timerColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
-                border:
-                    Border.all(color: _timerColor.withOpacity(0.5)),
+                border: Border.all(color: _timerColor.withValues(alpha: 0.5)),
               ),
-              child: Text(
-                '$_remaining s',
-                style: TextStyle(
-                  color: _timerColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
+              child: Text('$_remaining s',
+                  style: TextStyle(
+                      color: _timerColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15)),
+            ),
+          ),
+        ]),
+      );
+
+  Widget _buildQuestion() {
+    final q = _questions[_idx];
+    return Column(children: [
+      const SizedBox(height: 8),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          _badge('✅  $_score correct', AppTheme.success),
+          const SizedBox(width: 10),
+          _badge('📝  ${_questions.length - _idx} restantes', Colors.white70),
+        ]),
+      ),
+      const SizedBox(height: 20),
+      Expanded(
+        child: Stack(alignment: Alignment.center, children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SlideTransition(
+              position: _questionSlide,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                 ),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('VRAI  ou  FAUX ?',
+                      style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 12,
+                          letterSpacing: 3,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 20),
+                  Text(q.statement,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          height: 1.45)),
+                ]),
               ),
             ),
           ),
-        ],
+          if (_lastCorrect != null)
+            FadeTransition(
+              opacity: _feedbackFade,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 16),
+                decoration: BoxDecoration(
+                  color: (_lastCorrect!
+                          ? AppTheme.success
+                          : AppTheme.error)
+                      .withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  _lastCorrect! ? '✅  CORRECT !' : '❌  FAUX !',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+        ]),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        child: Row(children: [
+          Expanded(child: _answerBtn(true)),
+          const SizedBox(width: 12),
+          Expanded(child: _answerBtn(false)),
+        ]),
+      ),
+    ]);
+  }
+
+  Widget _answerBtn(bool isTrue) {
+    final color = isTrue ? AppTheme.success : AppTheme.error;
+    final label = isTrue ? '✅  VRAI' : '❌  FAUX';
+    return GestureDetector(
+      onTap: () => _answer(isTrue),
+      child: Container(
+        height: 72,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+        ),
+        child: Center(
+            child: Text(label,
+                style: TextStyle(
+                    color: color,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold))),
       ),
     );
   }
 
-  Widget _buildQuestion() {
-    final question = _shuffledQuestions[_currentIndex];
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildBadge('✅  $_score correct', AppTheme.success),
-              const SizedBox(width: 10),
-              _buildBadge(
-                  '📝  ${_shuffledQuestions.length - _currentIndex} restantes',
-                  Colors.white70),
-            ],
-          ),
+  Widget _badge(String text, Color color) => Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
-        const SizedBox(height: 20),
-        Expanded(
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: SlideTransition(
-                  position: _questionSlide,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.07),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'VRAI  ou  FAUX ?',
-                          style: TextStyle(
-                            color: Colors.white38,
-                            fontSize: 12,
-                            letterSpacing: 3,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          question.statement,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            height: 1.45,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              if (_lastCorrect != null)
-                FadeTransition(
-                  opacity: _feedbackFade,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: _lastCorrect!
-                          ? AppTheme.success.withOpacity(0.92)
-                          : AppTheme.error.withOpacity(0.92),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      _lastCorrect! ? '✅  CORRECT !' : '❌  FAUX !',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          child: Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _answer(true),
-                  child: Container(
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: AppTheme.success.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: AppTheme.success.withOpacity(0.5),
-                          width: 2),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '✅  VRAI',
-                        style: TextStyle(
-                          color: AppTheme.success,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _answer(false),
-                  child: Container(
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: AppTheme.error.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: AppTheme.error.withOpacity(0.5),
-                          width: 2),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '❌  FAUX',
-                        style: TextStyle(
-                          color: AppTheme.error,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEndState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('⏳', style: TextStyle(fontSize: 48)),
-          SizedBox(height: 12),
-          Text(
-            'Calcul des résultats…',
-            style: TextStyle(color: Colors.white70, fontSize: 18),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBadge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.25)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-            color: color, fontWeight: FontWeight.w600, fontSize: 13),
-      ),
-    );
-  }
+        child: Text(text,
+            style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 13)),
+      );
 }
