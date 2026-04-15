@@ -19,6 +19,7 @@ class AppTheme {
   static const Color modeMatch = Color(0xFFD35400);
   static const Color modeOrder = Color(0xFF8E44AD);
   static const Color modeWhoAmI = Color(0xFF2C3E50);
+  static const Color modeFox = Color.fromARGB(255, 26, 5, 145);
 
   static LinearGradient get primaryGradient => const LinearGradient(
         begin: Alignment.topLeft,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../game/foxgame.dart';
 import '../utils/app_theme.dart';
 import '../utils/quiz_data.dart';
 import '../utils/settings_provider.dart';
@@ -6,7 +7,6 @@ import 'quiz_page.dart';
 import 'scenario_page.dart';
 import 'flash_page.dart';
 import 'match_page.dart';
-import 'order_page.dart';
 import 'who_am_i_page.dart';
 import 'settings_page.dart';
 
@@ -61,7 +61,7 @@ class _HomepageState extends State<Homepage>
     _Mode(
       icon: '🎭', title: 'Mises en Situation',
       description: 'Évaluez des cas concrets du conseil départemental',
-      tag: '~8 min', color: AppTheme.modeScenario,
+      tag: '~4 min', color: AppTheme.modeScenario,
       pageBuilder: (s) => ScenarioPage(scenarios: QuizData.getScenarios(s)),
       availableCount: (s) => QuizData.getScenarios(s).length,
       minRequired: 3,
@@ -77,24 +77,32 @@ class _HomepageState extends State<Homepage>
     _Mode(
       icon: '🔗', title: 'Associe les Paires',
       description: 'Reliez les termes à leurs définitions',
-      tag: '~4 min', color: AppTheme.modeMatch,
+      tag: '~1 min', color: AppTheme.modeMatch,
       pageBuilder: (s) => MatchPage(sets: QuizData.getMatchSets(s)),
       availableCount: (s) => QuizData.getMatchSets(s).length,
       minRequired: 1,
     ),
-    _Mode(
+    /*_Mode(
       icon: '📋', title: 'Ordonne les Étapes',
       description: 'Remettez les séquences dans le bon ordre',
       tag: '~4 min', color: AppTheme.modeOrder,
       pageBuilder: (s) => OrderPage(challenges: QuizData.getOrderChallenges(s)),
       availableCount: (s) => QuizData.getOrderChallenges(s).length,
       minRequired: 1,
-    ),
+    ),*/
     _Mode(
       icon: '🕵️', title: 'Qui suis-je ?',
       description: 'Devinez le concept à partir d\'indices progressifs',
-      tag: '~5 min', color: AppTheme.modeWhoAmI,
+      tag: '~3 min', color: AppTheme.modeWhoAmI,
       pageBuilder: (s) => WhoAmIPage(rounds: QuizData.getWhoAmIRounds(s)),
+      availableCount: (s) => QuizData.getWhoAmIRounds(s).length,
+      minRequired: 1,
+    ),
+    _Mode(
+      icon: '🦊', title: 'FOX LAB',
+      description: 'Comprendre l\'IA Générative, Workflow et Agentique',
+      tag: '~5 min', color: AppTheme.modeFox,
+      pageBuilder: (s) => const FoxAIPedagogyGamePage(),
       availableCount: (s) => QuizData.getWhoAmIRounds(s).length,
       minRequired: 1,
     ),
@@ -188,7 +196,7 @@ class _HomepageState extends State<Homepage>
                   ]),
                   const SizedBox(height: 14),
                   GridView.count(
-                    crossAxisCount: 2,
+                    crossAxisCount: 3,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: 12,
@@ -214,6 +222,28 @@ class _HomepageState extends State<Homepage>
                               AppTheme.textSecondary.withValues(alpha: 0.5)),
                     ),
                   ),
+                  const SizedBox(height: 18),
+                  /*
+                  ElevatedButton(onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FoxAIPedagogyGamePage()),
+                    ), 
+                  child: RichText(text: const TextSpan(
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    children: [
+                      TextSpan(text: "🦊 FOX LAB", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40, color: Colors.white)),
+                      TextSpan(text: "\nComprendre l'IA Générative, Workflow et Agentique", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Colors.white))
+
+                    ],
+                  )),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 11, 1, 68),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 120),
+                  ),
+                  )*/
                 ],
               ),
             ),
@@ -268,22 +298,15 @@ class _HomepageState extends State<Homepage>
             ),
             const SizedBox(height: 16),
             Container(
-              width: 72,
-              height: 72,
+              width: 300,
+              height: 122,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Center(
-                  child: Text('🤖', style: TextStyle(fontSize: 36))),
+              child: Center(
+                  child: Image.asset('assets/images/onepointlogo.png', fit: BoxFit.contain)),
             ),
-            const SizedBox(height: 10),
-            const Text('IA Challenge',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8)),
             const SizedBox(height: 6),
             Container(
               padding:
